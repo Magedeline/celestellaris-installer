@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Install-Celestellaris</AssemblyName>
+    <RootNamespace>CelestellarisInstaller</RootNamespace>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Real publisher info shows in the exe's Properties and in SmartScreen/Defender reviews. Set Company to your name. -->
+    <Company>Magedeline</Company>
+    <Product>Celestellaris Installer</Product>
+    <AssemblyTitle>Celestellaris Installer</AssemblyTitle>
+    <Description>Installs the Celestellaris mod for Celeste (installs Everest and required helper mods).</Description>
+    <Version>1.0.0</Version>
+    <Copyright>Copyright (c) Magedeline</Copyright>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+  </ItemGroup>
+</Project>

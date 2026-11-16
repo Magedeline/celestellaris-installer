@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+release/
+payload/*.zip
+SHA256SUMS.txt
+*.pfx
+*.snk

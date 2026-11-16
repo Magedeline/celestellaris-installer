@@ -1,0 +1,33 @@
+name: build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write   # needed by SignPath's GitHub trusted-build link
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish
+        run: dotnet publish -c Release -o publish
+      - name: Checksum
+        shell: pwsh
+        run: |
+          (Get-FileHash publish/Install-Celestellaris.exe -Algorithm SHA256).Hash.ToLower() + "  Install-Celestellaris.exe" | Set-Content publish/SHA256SUMS.txt
+      - id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: |
+            publish/Install-Celestellaris.exe
+            publish/SHA256SUMS.txt
+      # After SignPath approves the project, add their submit-signing-request step here, using
+      # the artifact id from steps.upload.outputs.artifact-id. See TRUST.md.
