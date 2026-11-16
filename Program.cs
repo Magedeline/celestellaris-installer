@@ -137,6 +137,9 @@ class MainForm : Form {
             if (!IsCeleste(dir)) { MessageBox.Show("That folder doesn't contain Celeste.exe."); return; }
             var payload = Program.PayloadOverride ?? Path.Combine(AppContext.BaseDirectory, PayloadDir);
             var zips = Directory.Exists(payload) ? Directory.GetFiles(payload, "*.zip") : Array.Empty<string>();
+            // Also accept mod zips sitting directly next to the installer (e.g. loose GitHub release downloads).
+            if (zips.Length == 0 && Program.PayloadOverride == null)
+                zips = Directory.GetFiles(AppContext.BaseDirectory, "*.zip").Where(z => YamlOf(z).Contains("Name:")).ToArray();
             if (zips.Length == 0) throw new Exception("No mod files found in '" + PayloadDir + "' next to the installer. Extract the whole download first.");
             var mods = Path.Combine(dir, "Mods"); Directory.CreateDirectory(mods);
 
