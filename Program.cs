@@ -7,8 +7,16 @@ using Microsoft.Win32;
 namespace CelestellarisInstaller;
 
 static class Program {
+    // Optional unattended mode (for testing/CI): Install-Celestellaris.exe --silent --dir "<Celeste folder>" [--payload "<folder>"]
+    public static string SilentDir, PayloadOverride; public static int ExitCode;
     [STAThread]
-    static void Main() { ApplicationConfiguration.Initialize(); Application.Run(new MainForm()); }
+    static void Main(string[] args) {
+        for (int i = 0; i < args.Length; i++) {
+            if (args[i] == "--dir" && i + 1 < args.Length) SilentDir = args[++i];
+            else if (args[i] == "--payload" && i + 1 < args.Length) PayloadOverride = args[++i];
+        }
+        ApplicationConfiguration.Initialize(); Application.Run(new MainForm()); Environment.Exit(ExitCode);
+    }
 }
 
 class MainForm : Form {
@@ -27,7 +35,12 @@ class MainForm : Form {
     readonly Button go = new() { Text = "Install " + ModName, Dock = DockStyle.Fill, Height = 44 };
     readonly ProgressBar bar = new() { Dock = DockStyle.Fill };
     readonly TextBox log = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Dock = DockStyle.Fill };
-    static readonly HttpClient http = new() { Timeout = TimeSpan.FromMinutes(30) };
+    static readonly HttpClient http = MakeClient();
+    static HttpClient MakeClient() {
+        var c = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("CelestellarisInstaller/1.0");
+        return c;
+    }
 
     string title = ModName + " installer";
 
@@ -57,13 +70,18 @@ class MainForm : Form {
         Controls.Add(t);
         browse.Click += (_, _) => { using var d = new FolderBrowserDialog(); if (d.ShowDialog() == DialogResult.OK) path.Text = d.SelectedPath; };
         go.Click += async (_, _) => await Run();
-        Shown += (_, _) => {
+        Shown += async (_, _) => {
+            if (Program.SilentDir != null) { path.Text = Program.SilentDir; await Run(); Close(); return; }
             var f = FindCeleste(); path.Text = f ?? "";
             Log(f == null ? "Could not find Celeste. Click Browse and pick the folder containing Celeste.exe." : "Found Celeste: " + f);
         };
     }
 
-    void Log(string s) { if (InvokeRequired) { Invoke(() => Log(s)); return; } log.AppendText(s + "\r\n"); }
+    void Log(string s) {
+        if (InvokeRequired) { Invoke(() => Log(s)); return; }
+        log.AppendText(s + "\r\n");
+        if (Program.SilentDir != null) try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "celestellaris-install.log"), s + "\n"); } catch { }
+    }
     void Prog(int p) { if (InvokeRequired) { Invoke(() => Prog(p)); return; } bar.Value = Math.Clamp(p, 0, 100); }
 
     static bool IsCeleste(string d) => !string.IsNullOrEmpty(d) && File.Exists(Path.Combine(d, "Celeste.exe"));
@@ -117,7 +135,7 @@ class MainForm : Form {
         try {
             var dir = path.Text.Trim();
             if (!IsCeleste(dir)) { MessageBox.Show("That folder doesn't contain Celeste.exe."); return; }
-            var payload = Path.Combine(AppContext.BaseDirectory, PayloadDir);
+            var payload = Program.PayloadOverride ?? Path.Combine(AppContext.BaseDirectory, PayloadDir);
             var zips = Directory.Exists(payload) ? Directory.GetFiles(payload, "*.zip") : Array.Empty<string>();
             if (zips.Length == 0) throw new Exception("No mod files found in '" + PayloadDir + "' next to the installer. Extract the whole download first.");
             var mods = Path.Combine(dir, "Mods"); Directory.CreateDirectory(mods);
@@ -162,8 +180,11 @@ class MainForm : Form {
             }
             Prog(100);
             Log("\r\nDone! Launch Celeste and pick " + ModName + " from the map list.");
-            MessageBox.Show(ModName + " is installed. Start Celeste to play.");
-        } catch (Exception e) { Log("ERROR: " + e.Message); MessageBox.Show(e.Message, "Install failed"); }
+            if (Program.SilentDir == null) MessageBox.Show(ModName + " is installed. Start Celeste to play.");
+        } catch (Exception e) {
+            Log("ERROR: " + e.Message); Program.ExitCode = 1;
+            if (Program.SilentDir == null) MessageBox.Show(e.Message, "Install failed");
+        }
         finally { go.Enabled = true; }
     }
 
